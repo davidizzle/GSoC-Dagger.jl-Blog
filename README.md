@@ -1,5 +1,8 @@
 # GSoC Blog
 
+
+## 1. Introduction
+
 ### 1.1 Dagger.jl Recap
 
 #### *Parallelism Made Easy*
@@ -56,11 +59,23 @@ To tackle all these goals, the first step was to validate what was already in pl
 
 To gain more confidence in the robustness, effectiveness, and versatility of streaming tasks, a comprehensive collection of tests was written during the first few weeks.
 
-These included many possible combinations for DAGs — namely single infinite or finite tasks, multiple configurations of tasks (2 → 1, 1 → 2, diamond as per figure below), which were spawned themselves on combinations of different threads and workers.
+These included many possible combinations for DAGs — namely single tasks running finitely or infinitely, multiple configurations of tasks (1 → 2, 2 → 1, diamond, hourglass as per figure below), which were spawned themselves on combinations of different threads and workers.
 
-Afterward, the allocation of task streams was also gauged to earn more confidence around `stream.jl`’s ability to not require further allocation — effectively slowing down performance, increasing the number of calls for garbage collection, and adding overhead.
+![image](dagstests.png)
 
-`stream.jl` ultimately passes all tests, which earned the developers enough confidence to merge it with the main branch.
+<!-- Afterward, the allocation of task streams was also gauged to earn more confidence around `stream.jl`’s ability to not require further allocation — effectively slowing down performance, increasing the number of calls for garbage collection, and adding overhead. -->
+
+The full test list, at this point of the program, is provided below:
+
+- Checking a single "finite" task correctly finishes and returns
+- Checking single "infinite" task never finishes and keeps spinning
+- Checking all DAG configurations above and simpler correctly and predictably finish
+- Checking tasks can stream different element types, e.g. mutable and immutable
+- Checking all of the above tests continue passing if we mix up the threads and workers we allocate them to — ensuring cross-worker streaming
+
+The new streaming feature ultimately passed all initial tests, which seemed to awarded enough reliability to `stream.jl` that we could start thinking about networking protocols implementation for streaming data.
+
+<!-- which earned the developers enough confidence to merge it with the main branch. -->
 
 #### `Commit links:`
 
@@ -73,21 +88,28 @@ Afterward, the allocation of task streams was also gauged to earn more confidenc
 
 Given the desire to build Dagger’s streaming functionality towards heterogeneous computing and highly performing network communication, several networking protocols were tested.
 
-Workers were able to communicate over the wire through Julia’s built-in TCP and UDP libraries effectively — with scripts testing transmission of singular and vectors of `Float64` values, respectively.
+Workers were able to communicate over the wire through Julia’s built-in TCP and UDP libraries effectively — with scripts initially testing transmission of singular and vectors of `Float64` values without serialization, respectively.
 
-For MQTT and NATS — popular message queue protocols, one often used in IoT and the latter in microservices for its lightweight nature — libraries were sourced within the Julia community, respectively employing [Mosquitto.jl](https://github.com/denglerchr/Mosquitto.jl) and [NATS.jl](https://github.com/jakubwro/NATS.jl). Message queues work with a pub/sub system, where certain workers publish to a message queue, and only the workers subscribed to the same queue receive the data — in this case, a single publisher was tested to publish single and vectors of `Float64` values, with a single subscriber successfully pulling the data from the message queue.
+For MQTT and NATS — popular message queue protocols, one often used in IoT and the latter in microservices for its lightweight nature — libraries were sourced within the Julia community, respectively employing [Mosquitto.jl](https://github.com/denglerchr/Mosquitto.jl) and [NATS.jl](https://github.com/jakubwro/NATS.jl). Message queues work via a pub/sub system, where certain workers publish to a message queue, and only the workers subscribed to the same queue (see: topic) receive the data — in this case, a single publisher was tested to publish single and vectors of `Float64` values, with a single subscriber successfully pulling the data from the message queue.
 
 #### `Commit links:`
 
 - [First draft of pull/push network protocols...](https://github.com/davidizzle/Dagger.jl/commit/05aa462d7ee732a8d4a15eb5656bcdecfcefabf0)
 - [...with corrections](https://github.com/davidizzle/Dagger.jl/commit/1babb00ee710e1754a14023b0258e9a75e9e64b1)
-- 
 
 ### 2.3 Memory-Mapped Ring Buffer Rollout
 
-Through the Mmap library, which helps with memory-mapping of files, a new type of buffer was implemented in the following couple of weeks — an `mmapRingBuffer`, i.e., a ring buffer mapping data on disk. The rationale behind a memory-mapped ring buffer is to eliminate the overhead from allocations of extra space when copying buffer data, but rather having a downstream task in a DAG access the same memory used by the upstream’s ring buffer.
+Through the `Mmap.jl` library, which helps with memory-mapping of files, a new type of buffer was initially implemented in the following couple of weeks — an `mmapRingBuffer`, i.e. a ring buffer mapping data on disk. The rationale behind a memory-mapped ring buffer is to eliminate the overhead from allocations of extra space when copying buffer data, but rather having a downstream task in a DAG access the same memory used by the upstream’s ring buffer.
+
+This was implemented locally, but ended up being tabled — hence no commits were ever pushed with this specific change. It remains in the to-dos for potential future use.
 
 ### 2.4 Graceful cancellation and signal interrupts
+
+The biggest detour from the original objective list during the GSoC program was likely the realization of the necessity to implement a requested and highly useful feature for any multi-threaded, distributed library: the possibility to cancel scheduled and executing tasks alike, which may otherwise keep spinning indefinitely.
+
+This, effectively, meant altering the very way Julia handles signal interrupts from the user — including alternative ways that clean up left over tasks.
+
+The main Dagger developers were busy 
 
 #### `Commit links:`
 
@@ -103,7 +125,7 @@ Through the Mmap library, which helps with memory-mapping of files, a new type o
 
 ***
 
-#### Acknowledgments
+### Acknowledgments
 
 My special, heartfelt thanks go to [J. Samaroo](https://github.com/jpsamaroo) and [J. Wrigley](https://github.com/JamesWrigley) for their awesome mentorship through the Google Summer of Code program, which has truthfully taught me more than I could imagine — about programming, about Julia, about HPC, but more especially about teamwork and the importance of helping each other.
 To many more lines of code of contribution and projects built together!

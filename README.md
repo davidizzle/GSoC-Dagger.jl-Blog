@@ -152,7 +152,13 @@ Similar work should be carried out for each of the aforementioned libraries — 
 
 ### 2.5 Piping and wiring networking protocols
 
-As GSoC comes to a wrap, it shall be time to merge what is in place and works well.
+As GSoC comes to a wrap, it is time to merge what is in place and works well.
+
+This, in practice, meant expanding from remote calls only fetchers and upgrading `stream.jl`'s architecture from a fetcher-only based system to a push/pull system, where each streaming task pulls to its input buffer and pushes from its output buffer.
+
+Some changes were made to `stream.jl` to wire up these networking protocols to use them, and even more to the Dagger.jl codebase as some [pieces bitrotted](https://github.com/JuliaParallel/Dagger.jl/pull/575) and others required being reworked, such as replacing the old `RemoteFetcher` with the new `RemoteChannel` implementation.
+
+The streaming communication revamp was also a good opportunity to add support for the popular [ZeroMQ](https://github.com/JuliaInterop/ZMQ.jl) package, which should soon be seamlessly integrated in the protocols available with `Dagger.@spawn`.
 
 #### `Commit links:`
 
@@ -164,8 +170,9 @@ As GSoC comes to a wrap, it shall be time to merge what is in place and works we
 ## 3. What is left to do?
 
 - PRs for cancellation support for `Distributed.jl`, `CUDA.jl`, `AMDGPU.jl`, `oneAPI.jl`, `MemPools.jl`.
-- Adding GPU full support to Dagger, and zero-allocation CPU-GPU transfers
+- Adding full GPU support to Dagger, and zero-allocation automatic CPU-GPU transfers
 - Benchmark streaming DAG performance and allocations
+- Include full support for message queue based protocols, i.e. NATS, MQTT, ZeroMQ
 
 ***
 

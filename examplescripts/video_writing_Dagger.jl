@@ -50,7 +50,7 @@ function read_vid(video)
     return img
 end
 
-output_video = "./Dagger_out/output_Dagger_filtered_dogs2.mp4"  # Path for the output video filevideo_source = "cars.mp4"  # Replace with your video file path or use "0" for webcam
+output_video = "./Dagger_out/output_Dagger_filtered_dogs1.mp4"  # Path for the output video filevideo_source = "cars.mp4"  # Replace with your video file path or use "0" for webcam
 
 Dagger.spawn_streaming() do
     global imgarray

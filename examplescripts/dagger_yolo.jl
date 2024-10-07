@@ -10,14 +10,13 @@ function read_vid(video)
         return Dagger.finish_stream(result=nothing)
     end
     img = VideoIO.read(video)
-    println("Video read!")
     return img
 end
 
 function push_aux_TLS(img)
     stack = []
     global counter
-    if counter > 10 || img === nothing
+    if counter > 140 || img === nothing
         println("Wrapping up...")
         stack = task_local_storage("stack")
         return Dagger.finish_stream(result=stack)
@@ -35,40 +34,29 @@ function push_aux_TLS(img)
 end
 
 function prepare_imgaux(img, yolomod)
-    println("prepare img")
-    if img === nothing
-        println("Nothing to prepare")
-        return Dagger.finish_stream(result=nothing)
-    end
     var, out = prepareImage(img, yolomod)
     return out
 end
 
 function prepare_imgaux_b(img, yolomod)
-    println("prepare img")
-    if img === nothing
-        println("Nothing to prepare")
-        return Dagger.finish_stream(result=nothing)
-    end
+
     var, out = prepareImage(img, yolomod)
     return var
 end
 
 function drawBoxesAux(img, yolomod, padding, res)
-    println("drawin boxes")
-    if img === nothing
-        println("Almost through...")
-        return Dagger.finish_stream(result=nothing)
-    end
     return drawBoxes(img, yolomod, padding, res)
 end
 
-function yolomodAux(batch, aux)
-    if aux !== nothing
-        batch[:,:,:,1] = aux
+function yolomodAux(batch, aux, yolomod)
+    
+    # Introduce one-time lag
+    if haskey(task_local_storage(), "batch")
+        batch[:,:,:,1] = task_local_storage("batch")
     end
-
-    return yolomod(batch, detectThresh=0.5, overlapThresh=0.8)
+    task_local_storage("batch", aux)
+    output = yolomod(batch, detectThresh=0.5, overlapThresh=0.8)
+    return output
 end
 
 # Define input and output video file paths
@@ -84,9 +72,9 @@ Dagger.spawn_streaming() do
     batch = emptybatch(yolomod)
 
     img = Dagger.@spawn read_vid(video)
-    res = Dagger.@spawn yolomodAux(batch, b)
     b = Dagger.@spawn prepare_imgaux_b(img, yolomod)
     padding = Dagger.@spawn prepare_imgaux(img, yolomod)
+    res = Dagger.@spawn yolomodAux(batch, b, yolomod)
     imgBoxes = Dagger.@spawn drawBoxesAux(img, yolomod, padding, res)
     stack = Dagger.@spawn push_aux_TLS(imgBoxes)
 end

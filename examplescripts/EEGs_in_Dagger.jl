@@ -83,7 +83,7 @@ Dagger.spawn_streaming() do
     interim1 = Dagger.@spawn (result) -> map(x -> abs(x)^2, result)
     res = Dagger.@spawn (interim1) -> map(x -> log(x), interim1)
     res2 = Dagger.@spawn adjoint(res)
-    p2 = Dagger.@spawn heatmap(tw, freqs, res2, xlabel= "Time (s)", ylabel="requency (Hz)", colorbar=false, c=cgrad(:viridis, scale=:log10))
+    p2 = Dagger.@spawn heatmap(tw, freqs, res2, xlabel= "Time (s)", ylabel="Frequency (Hz)", colorbar=false, c=cgrad(:viridis, scale=:log10))
 
     # Steps to only look at frequencies from 0 to 50
     # interim2 = Dagger.@spawn (interim1) -> map(x -> log(x), interim1)

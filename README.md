@@ -34,6 +34,8 @@ end
   <img src="parall.png" />
 </p>
 
+Ta-da! Obviously, while showcasing how parallelizable a bunch of `sleep()` calls is silly, it is just to get the point across. In combination with `DArrays`, which are Dagger Distributed Arrays, can improve on default performance since standard operations do not use multi-threading at all and parallelization can be more powerful.
+
 If you want to learn more about how Dagger works or want to deep-dive into the specifics of how Dagger makes all of this happen behind the scenes, check out the [Dagger Workshop](https://github.com/jpsamaroo/DaggerWorkshop2024) from the [Productive Parallel Programming](https://www.youtube.com/watch?v=ENq05cxw1eY&t=1388s) conference at JuliaCon 2024!
 
 ### 1.2 Our proposed objectives
@@ -246,7 +248,7 @@ Dagger.spawn_streaming() do
     # Wavelet transform
     result = Dagger.@spawn cwt(s, c)
     # Broadcasting square absolute value
-    interim1 = Dagger.@spawn (result) -> map(x -> abs(x)^2, result)
+    interim = Dagger.@spawn (result) -> map(x -> abs(x)^2, result)
     # Plotting in logarithmic scale
     res = Dagger.@spawn (interim1) -> map(x -> log(x), interim1)
     # Transposing
@@ -256,6 +258,12 @@ Dagger.spawn_streaming() do
     d = Dagger.@spawn display(p)
 end
 ```
+
+The DAG is shown below — the only bifurcations we encounter are mainly for plots and displays.
+
+<p align="center">
+  <img src="eegsdag.png", width=500 />
+</p>
 
 #### Comments
 
@@ -294,31 +302,123 @@ end
 
 ### 3.4 Live image filtering
 
-We didn't want to throw in the towel for a minor technical difficulty and thus we backtracked to filtering a live image feed. Applications use cases are manifold — e.g. video surveillance or any type of live image filtering — and we provide a simple implementation leveraging the [ImageFiltering](https://juliaimages.org/ImageFiltering.jl/stable/) package.
+We didn't want to throw in the towel for a minor technical difficulty and thus we backtracked to filtering a live image feed. Applications use cases are manifold — e.g. video surveillance or any type of live image filtering — and we provide a simple implementation leveraging the [ImageFiltering](https://juliaimages.org/ImageFiltering.jl/stable/) and [ColorTypes](https://github.com/JuliaGraphics/ColorTypes.jl) packages.
 
+Dagger's API looks pretty simple:
 
-<> Filtered tigro
-https://github.com/user-attachments/assets/c1924d51-ebe3-438d-8560-aa065e048be2
+```Julia
+Dagger.spawn_streaming() do
 
+    video = VideoIO.openvideo(video_path)
 
-<> Filtered blurry dogs
-https://github.com/user-attachments/assets/995b4463-2f8a-4cc3-b81b-2ad679d640f2
+    img = Dagger.@spawn read_vid(video)
+    frame = Dagger.@spawn filter_frame(img)
+    # Push to task local storage
+    imgarray = Dagger.@spawn push_aux_TLS(frame)
+end
+```
+There is naturally no way to show, in this blog, streaming video output. It was hence necessary to take a finite video and accumulate the frames in an array at the end of the streaming DAG, to be converted into a video.
+We performed this for a number of videos, and the results are shown below.
 
+#### Video 1: Woman walking dogs
 
-<> Laplacian dogs
-https://github.com/user-attachments/assets/61d6bf21-3aeb-4d51-be70-76218461ecac
+The video was greyed out.
 
+[Original video](https://www.youtube.com/shorts/ERhf95tULUo)
+[Greyed out video](https://www.youtube.com/shorts/7SZULHj8r6c)
 
-<> Gray tigro
-https://github.com/user-attachments/assets/670949e2-ad46-4097-9821-d5aeca6061d9
+<p align="center">
+  <img src="dogs1.png" />
+</p>
 
+#### Video 2: Cats
 
-<> gray dogs
-https://github.com/user-attachments/assets/522ec722-ea7f-4a6c-98d5-8bd471f104d4
+[Original video](https://www.youtube.com/shorts/GFIqhz9YtGc)
+[Blurred video](https://www.youtube.com/shorts/_IzBQyad_JM)
+[Greyed out video](https://www.youtube.com/shorts/H73G8pdZ4EU)
 
+<p align="center">
+  <img src="cats2.png" />
+</p>
 
+#### Video 3: Dogs walking
+
+[Original video](https://www.pexels.com/video/footage-of-a-man-walking-with-dogs-3725511/)
+[Laplacian](https://youtu.be/quT_fpLrnZg)
+
+<p align="center">
+  <img src="dogs2.png" />
+</p>
+
+#### `Commit links:`
+
+- [Main commit](https://github.com/davidizzle/GSoC-Dagger.jl-Blog/commit/4c14ec57daf3a4a225b38d6528ca28934e17c754)
 
 ### 3.5 Live object detection
+
+Perhaps a more specific use case of image filtering is image processing and live object detection.
+
+This initially proved to be a challenge leveraging [YOLO](https://pjreddie.com/darknet/yolo/), wrapped in the Julia package [ObjectDetector.jl](https://github.com/r3tex/ObjectDetector.jl), because of the DAG interdependency which is not immediate to implement for streaming tasks.
+We used the YOLOv3-tiny model and for simplicity, and for the sake of real-time streaming and low resource utilization, we pick a batch size of 1 — though this is definitely a tuneable parameter that can improve accuracy.
+
+The final task accumulates inference output images and writes to a video file, which is linked below.
+
+```Julia
+Dagger.spawn_streaming() do
+    global stack
+    video = VideoIO.openvideo(video_source)
+    # Load the YOLOv3-tiny model pretrained on COCO, with a batch size of 1
+    yolomod = YOLO.v3_608_COCO(batch=1, silent=true)
+    imgstack = Vector()
+    batch = emptybatch(yolomod)
+
+    img = Dagger.@spawn read_vid(video)
+    b = Dagger.@spawn prepare_imgaux_b(img, yolomod)
+    padding = Dagger.@spawn prepare_imgaux(img, yolomod)
+    res = Dagger.@spawn yolomodAux(batch, b, yolomod)
+    imgBoxes = Dagger.@spawn drawBoxesAux(img, yolomod, padding, res)
+    stack = Dagger.@spawn push_aux_TLS(imgBoxes)
+end
+```
+
+The main trouble I ran into when deploying this inference model with Dagger streaming was the one-step lag there when passing the `batch` variable to the YOLOv3-tiny model, which presumably feeds from previous images.
+This is shown in the diagram below — while the DAG itself does not include a lot of nodes and edges, it does include the one-step lag represented by the $z^{-1}$ arrow.
+
+Given that DAG loops or complicate interdependencies might not still be comprehensively supported, I worked around this for showcasing purposes in a bit of a hacky way.
+
+As shown below, the yolomodAux task stores in its internal `task_local_storage()` the previous value, popping the present one (if there is one) at each iteration. This simulates a data feed lag of one-step — which can be generalizable to an $n$-step lag by implementing an $n$-element queue in the TLS of the task, pushing and popping at each iteration.
+```Julia
+function yolomodAux(batch, aux, yolomod)
+    
+    # Introduce one-time lag
+    if haskey(task_local_storage(), "batch")
+        batch[:,:,:,1] = task_local_storage("batch")
+    end
+    task_local_storage("batch", aux)
+    output = yolomod(batch, detectThresh=0.5, overlapThresh=0.8)
+    return output
+end
+```
+
+<p align="center">
+  <img src="yolodag.png", width="450"/>
+</p>
+
+[Original video](https://youtu.be/OaGZcJo-oPY)
+[YOLO Object Detection](https://youtu.be/mZ0uAs-7OiA)
+
+<p align="center">
+  <img src="kittens.png" />
+</p>
+
+#### Comments
+
+This example highlighted how we eventually might need to think about all possible edge cases when constructing DAGs with feedback systems, and potentially including safety checks for potential user misconstructed DAGs.
+We may include options for this in the future Dagger API for ease of use, but for now it remains the user's responsibility to flesh this logic out in auxiliary functions in a similar fashion to what I did above.
+
+#### `Commit links:`
+
+- [Main commit](https://github.com/davidizzle/GSoC-Dagger.jl-Blog/commit/183282c473781aa726a71e85d8c80b41d52779a1)
 
 ## 4. Extras
 
@@ -334,7 +434,9 @@ https://github.com/user-attachments/assets/522ec722-ea7f-4a6c-98d5-8bd471f104d4
 The JuliaCon 2024 was hosted in Eindhoven, NL during the week of July 9th–13th.
 I managed to fly in for the last two days (Friday, July 12th and Saturday, July 13th) just in time to see Julian's brief presentation on Dagger (which followed the [Workshop](https://www.youtube.com/watch?v=ENq05cxw1eY) presented at TU/e on Tuesday).
 
-Many attendees, especially researchers in HPC, expressed their interest in additional features 
+Many attendees, especially researchers in HPC, expressed their interest in additional features needed for Dagger's high parallelism, such as remote task graceful cancellation or GPU support.
+
+During Saturday's morning workshop, Julian, Dr. P. Szufel and I resumed some of our discussions on Dagger.
 
 ![image](juliacon.jpg "JuliaCon Eindhoven 2024")
 *JuliaCon Eindhoven 2024*

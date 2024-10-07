@@ -224,7 +224,7 @@ With some slight changes to the code, we can package the plots as a .gif file. T
 
 #### Comments
 
-No particular difficulties were encountered in this implementation, Dagger worked exactly as we expected it during building. The DAG in questions is also quite simple as — barring the plotting — it is entirely sequential.
+No particular difficulties were encountered in this implementation, Dagger worked exactly as we expected it to during building. The DAG in questions is also quite simple as — barring the plotting — it is entirely sequential.
 
 #### `Commit links:`
 - [Main commit](https://github.com/davidizzle/GSoC-Dagger.jl-Blog/commit/d6b60dbb13377096cac3968f57b0df548179cdbc)
@@ -261,10 +261,10 @@ Dagger.spawn_streaming() do
     # Broadcasting square absolute value
     interim = Dagger.@spawn (result) -> map(x -> abs(x)^2, result)
     # Plotting in logarithmic scale
-    res = Dagger.@spawn (interim1) -> map(x -> log(x), interim1)
+    res = Dagger.@spawn (interim) -> map(x -> log(x), interim)
     # Transposing
     res2 = Dagger.@spawn adjoint(res)
-    p2 = Dagger.@spawn heatmap(tw, freqs, res2, xlabel= "Time (s)", ylabel="requency (Hz)", colorbar=false, c=cgrad(:viridis, scale=:log10))
+    p2 = Dagger.@spawn heatmap(tw, freqs, res2, xlabel= "Time (s)", ylabel="Frequency (Hz)", colorbar=false, c=cgrad(:viridis, scale=:log10))
     p = Dagger.@spawn plot(p1,p2, layout=l)
     d = Dagger.@spawn display(p)
 end
@@ -290,10 +290,10 @@ As expected, there were no significant hurdles in implementing this DAG through 
 
 ### 3.3 Webstreaming
 
-Another use case for streaming DAGs with Dagger would be to stream image data — e.g. webstreaming — and carry out some sort of processing on it — background blurring, filtering. etc.
+Another use case for streaming DAGs with Dagger would be to stream webcam image data — e.g. webstreaming — and carry out some sort of processing on it — background blurring, filtering, et cetera.
 
-We our next example was to use the [VideoIO.jl](https://github.com/JuliaIO/VideoIO.jl) library to capture frames from the computer webcam and filter it through a Dagger DAG.
-However, this was an unsuccessful attempt: the streaming and processing per se likely worked out fine, but it doesn't seem to be immediately clear how to update images using Dagger streaming. The below implementation makes use of the `imshow()` function from [ImageView.jl](https://github.com/JuliaImages/ImageView.jl), but the canvas fails to update. In the interest of time, this specific application was parked.
+Our next example was to use the [VideoIO.jl](https://github.com/JuliaIO/VideoIO.jl) library to capture frames from the computer webcam and filter it through a Dagger DAG.
+However, this was an unsuccessful attempt: the streaming and processing per se likely worked out fine, but it doesn't seem to be immediately clear how to update image display using Dagger streaming. The below implementation makes use of the `imshow()` function from [ImageView.jl](https://github.com/JuliaImages/ImageView.jl), but the canvas fails to update. In the interest of time, this specific application was parked.
 
 ```Julia
 Dagger.spawn_streaming() do
@@ -313,7 +313,7 @@ end
 
 ### 3.4 Live image filtering
 
-We didn't want to throw in the towel for a minor technical difficulty and thus we backtracked to filtering a live image feed. Applications use cases are manifold — e.g. video surveillance or any type of live image filtering — and we provide a simple implementation leveraging the [ImageFiltering](https://juliaimages.org/ImageFiltering.jl/stable/) and [ColorTypes](https://github.com/JuliaGraphics/ColorTypes.jl) packages.
+We didn't want to throw in the towel for a minor technical difficulty and thus we backtracked to filtering a live image feed. Applications are manifold — e.g. video surveillance or any type of live image filtering — and we provide a simple implementation leveraging the [ImageFiltering](https://juliaimages.org/ImageFiltering.jl/stable/) and [ColorTypes](https://github.com/JuliaGraphics/ColorTypes.jl) packages.
 
 Dagger's API looks pretty simple:
 
@@ -370,12 +370,12 @@ We performed this for a number of files  — either greying out, blurring, or ap
 
 ### 3.5 Live object detection
 
-Perhaps a more specific use case of image filtering is image processing and live object detection.
+Perhaps a more specific use case of image filtering is image processing for live object detection.
 
-This initially proved to be a challenge leveraging [YOLO](https://pjreddie.com/darknet/yolo/), wrapped in the Julia package [ObjectDetector.jl](https://github.com/r3tex/ObjectDetector.jl), because of the DAG interdependency which is not immediate to implement for streaming tasks.
+This initially proved to be a challenge leveraging [YOLO](https://pjreddie.com/darknet/yolo/), wrapped in the Julia package [ObjectDetector.jl](https://github.com/r3tex/ObjectDetector.jl), because of the DAG's temporal interdependency which is not immediate to implement for streaming tasks.
 We used the YOLOv3-tiny model and for simplicity, and for the sake of real-time streaming and low resource utilization, we picked a batch size of 1 — though this is definitely a tuneable parameter that can improve accuracy.
 
-The final `stack` task accumulates inference output images and writes to a video file, which has been linked below.
+The final `stack` task in the code below accumulates inference output images and writes to a video file, which has been linked below.
 
 ```Julia
 Dagger.spawn_streaming() do
@@ -395,7 +395,7 @@ Dagger.spawn_streaming() do
 end
 ```
 
-The main trouble I ran into when deploying this inference model with Dagger streaming was the one-step lag needed when passing the `batch` variable to the YOLOv3-tiny model, which presumably feeds from previous images.
+The main trouble I ran into when deploying this inference model with Dagger streaming was the one-step lag needed when passing the `batch` variable to the YOLOv3-tiny model, which presumably feeds on previous images.
 I have shown this in the diagram below — while the DAG itself does not include a lot of nodes and edges, it does include the one-step lag represented by the $z^{-1}$ arrow.
 
 <p align="center">

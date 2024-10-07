@@ -7,7 +7,7 @@
 
 #### *Parallelism Made Easy*
 
-![image](logo.jpg)
+![image](images/logo.jpg)
 
 It is typically a cumbersome exercise, for programmers, to quickly and efficiently deploy multithreaded, distributed, or GPU computations.
 
@@ -31,7 +31,7 @@ for i in 1:10
 end
 ```
 <p align="center">
-  <img src="parall.png" />
+  <img src="images/parall.png" />
 </p>
 
 <small>*Image credit: [J.Samaroo Dagger Workshop](https://github.com/jpsamaroo/DaggerWorkshop2024/blob/main/DaggerWorkshop2024.ipynb)*</small>
@@ -46,7 +46,7 @@ If you want to learn more about how Dagger works or want to deep-dive into the s
 
 Dagger has recently been incorporating streaming functionality in its `jps/stream2` branch, which allows users to implement task Directed Acyclic Graphs (DAGs) as a streaming graph of connected tasks (see examples below). Again, these *streaming* tasks can then seamlessly be deployed in a multi-threaded, multi-process fashion which can also leverage a heterogeneous set of computing resources.
 
-![image](dags.png)
+![image](images/dags.png)
 
 At the beginning of the GSoC contribution program, we set some ambitious goals:
 
@@ -70,7 +70,7 @@ To gain more confidence in the robustness, effectiveness, and versatility of str
 
 These included many possible combinations for DAGs — namely single tasks running finitely or infinitely, multiple configurations of tasks (1 → 2, 2 → 1, diamond, hourglass as per figure below), which were spawned themselves on combinations of different threads and workers.
 
-![image](dagstests.png)
+![image](images/dagstests.png)
 
 <!-- Afterward, the allocation of task streams was also gauged to earn more confidence around `stream.jl`’s ability to not require further allocation — effectively slowing down performance, increasing the number of calls for garbage collection, and adding overhead. -->
 
@@ -104,7 +104,7 @@ For MQTT and NATS — popular message queue protocols, the former often used in 
 The Dagger API for specifying a networking protocol would be on a "per-upstream-task", or per-edge, basis. The DAG configurations and protocols illustrated below are a random example.
 
 <p align="center">
-  <img src="dagsnet.png" />
+  <img src="images/dagsnet.png" />
 </p>
 
 #### `Commit links:`
@@ -119,7 +119,7 @@ Through the `Mmap.jl` library, which helps with memory-mapping of files, a new t
 By way of background, a "ring" — or circular — buffer is a data structure that uses a fixed-size buffer in a circular way, i.e. where both ends are connected. This structure includes a 'reading' pointer and a 'writing' pointer as below, and is historically useful for buffering data streams.
 
 <p align="center">
-  <img src="ringbuffer.gif" />
+  <img src="images/ringbuffer.gif" />
 </p>
 
 <small>*This gif was provided by [Wikimedia Commons](https://commons.wikimedia.org/wiki/File:Circular_Buffer_Animation.gif)*</small>
@@ -146,7 +146,7 @@ The first attempt at ubiquitous cancellation, showcased in commit #4, was quite 
 As a result, this required concocting a new way to cancel multi-threaded jobs — and possibly, one more gentle at that. After more digging, it became apparent that it should be possible to modify the native `Base.Threads` expression parser used in the `@threads` macro, and recursively add cancellation checks for every expression line, i.e. for every one evaluation in the abstract syntax tree.
 
 <p align="center">
-  <img src="ast.png" width="450" />
+  <img src="images/ast.png" width="450" />
 </p>
 <small>
 
@@ -273,7 +273,7 @@ end
 The DAG is shown below — the only bifurcations we encounter are mainly for plots and displays.
 
 <p align="center">
-  <img src="eegsdag.png", width=500 />
+  <img src="images/eegsdag.png", width=500 />
 </p>
 
 #### Comments
@@ -338,7 +338,7 @@ We performed this for a number of files  — either greying out, blurring, or ap
 [Greyed out video](https://www.youtube.com/shorts/7SZULHj8r6c)
 
 <p align="center">
-  <img src="dogs1.png" />
+  <img src="images/dogs1.png" />
 </p>
 
 <small>*Video provided by [Pexels](https://www.pexels.com/search/videos/)*</small>
@@ -350,7 +350,7 @@ We performed this for a number of files  — either greying out, blurring, or ap
 [Greyed out video](https://www.youtube.com/shorts/H73G8pdZ4EU)
 
 <p align="center">
-  <img src="cats2.png" />
+  <img src="images/cats2.png" />
 </p>
 
 #### Video 3: Dogs walking
@@ -359,7 +359,7 @@ We performed this for a number of files  — either greying out, blurring, or ap
 [Laplacian](https://youtu.be/quT_fpLrnZg)
 
 <p align="center">
-  <img src="dogs2.png" />
+  <img src="images/dogs2.png" />
 </p>
 
 <small>*Video provided by [Pexels](https://www.pexels.com/search/videos/)*</small>
@@ -399,7 +399,7 @@ The main trouble I ran into when deploying this inference model with Dagger stre
 I have shown this in the diagram below — while the DAG itself does not include a lot of nodes and edges, it does include the one-step lag represented by the $z^{-1}$ arrow.
 
 <p align="center">
-  <img src="yolodag.png", width="450"/>
+  <img src="images/yolodag.png", width="450"/>
 </p>
 
 Given that DAG loops or complicate interdependencies might not still be comprehensively supported, I worked around this for showcasing purposes in a bit of a hacky way.
@@ -423,7 +423,7 @@ end
 [YOLO Object Detection](https://youtu.be/mZ0uAs-7OiA)
 
 <p align="center">
-  <img src="kittens.png" />
+  <img src="images/kittens.png" />
 </p>
 
 <small>*Video provided by [Pexels](https://www.pexels.com/search/videos/)*</small>
@@ -458,7 +458,7 @@ Many attendees, especially researchers in HPC, expressed their interest in addit
 
 During Saturday's morning workshop, Julian, Dr. P. Szufel and I resumed some of our discussions on Dagger.
 
-![image](juliacon.jpg "JuliaCon Eindhoven 2024")
+![image](images/juliacon.jpg "JuliaCon Eindhoven 2024")
 *JuliaCon Eindhoven 2024*
 
 ### Acknowledgments

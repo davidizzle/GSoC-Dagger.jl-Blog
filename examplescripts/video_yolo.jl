@@ -1,8 +1,8 @@
 using VideoIO, FileIO, ObjectDetector
 
 # Define input and output video file paths
-video_source = "dogs1.mp4"   # Replace with your input video file path
-output_video = "yolo_dogs1.mp4"  # Path for the output video filevideo_source = "cars.mp4"  # Replace with your video file path or use "0" for webcam
+video_source = "cats2.mp4"   # Replace with your input video file path
+output_video = "yolo_cats2.mp4"  # Path for the output video filevideo_source = "cars.mp4"  # Replace with your video file path or use "0" for webcam
 
 video = VideoIO.openvideo(video_source)
 
@@ -21,8 +21,10 @@ while !eof(video)
     imgBoxes = drawBoxes(img, yolomod, padding, res)
 
     push!(imgstack, imgBoxes)
+    println(length(imgstack))
 end
-
-VideoIO.save(output_video, imgstack, framerate=30)
+println("saving..")
+encoder_options = (crf=23, preset="ultrafast")
+VideoIO.save(output_video, imgstack, framerate=30, encoder_options=encoder_options)
 
 println("Video processing complete!")

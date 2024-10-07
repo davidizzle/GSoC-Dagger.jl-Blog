@@ -1,5 +1,6 @@
-using Dagger, Sockets, NATS, FFTW, Plots
+using Dagger, Sockets, FFTW, Plots
 # ENV["JULIA_DEBUG"] = "Dagger"
+
 function rand_finite()
     sleep(1)
     x = rand(1000)
@@ -36,13 +37,15 @@ Dagger.spawn_streaming() do
             natsport = 4222
             x = 1:400
             f_s = 1200
-            freq = fftfreq(400, 1200)
+            freq = fftfreq(x[end], f_s)
 
-            s = Dagger.@spawn rand_sinusoids_finite(400, 4, 1200)
-            ff = Dagger.@spawn fft(s)
+            s = Dagger.@spawn rand_sinusoids_finite(x[end], 10, f_s)
+#            ff = Dagger.@spawn fft(s)
+            ff = Dagger.@spawn fft(Dagger.UDP(s; ip=ip1, port=port2))
             f = Dagger.@spawn (ff)->map(abs,ff)
-            p = Dagger.@spawn plot!(freq, f)
-            d1 = Dagger.@spawn display(p)
+            p = Dagger.@spawn plot(freq, f)
+            d1 = Dagger.@spawn display(Dagger.TCP(p; ip=ip1, port=port2))
+#            d1 = Dagger.@spawn display(p)
 
        end
 

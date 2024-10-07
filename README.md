@@ -21,7 +21,7 @@ Dagger is a Julia module that brings all three together and makes parallelism ea
 - Automating data transfer and worker migration, while hiding latency
 - Automating GPU utilization and data conversion
 
-As a result, though the user might even be agnostic to concurrency and parallelism, leveraging Dagger's API she is able to tinker with high performance computing — *in seconds*.
+As a result, though the user might even be agnostic to concurrency and parallelism, leveraging Dagger's API she is able to tinker with high performance computing.
 
 See Dagger's parallelism capabilities through the 3 lines of code below:
 
@@ -57,6 +57,8 @@ At the beginning of the GSoC contribution program, we set some ambitious goals:
 ## 2. GSoC Code Additions
 
 To tackle all these goals, the first step was to validate what was already in place, identifying potential faults, bugs, or inefficiencies — in other words, we needed to create an exhaustive streaming testset which would probe all potential pain points of our vision.
+
+###### *NB: many of these features were done in collaboration with mentors J.Samaroo and J.Wrigley — commits may be coauthored.*
 
 ### 2.1 Building a Streaming Testset
 
@@ -162,19 +164,35 @@ The streaming communication revamp was also a good opportunity to add support fo
 
 #### `Commit links:`
 
-- [Networking initial data structs](https://github.com/davidizzle/Dagger.jl/commit/15481b3f30e880c2cc3d636e3f52826cb1d97fbf)
-- [Bulk of networking push/pull functions](https://github.com/davidizzle/Dagger.jl/commit/a39f2cf073fa73c83b8fca6db1245373e5f8ca60)
-- [Interim architectural corrections](https://github.com/davidizzle/Dagger.jl/commit/f04b36dea560d5063de0f3cc87fe245e5b79c934)
-- [Main first piece of wiring it all together with stream.jl](https://github.com/davidizzle/Dagger.jl/commit/3a650e18c9fdd56ef6d6cc11f6f9240bc2b1c073)
+- [Networking initial data structs](https://github.com/JuliaParallel/Dagger.jl/commit/667d2d9725474beca7534f6d124a37466055f7cd)
+- [Bulk of networking push/pull functions](https://github.com/JuliaParallel/Dagger.jl/commit/1998cbb76667603ad8863a726904aa01610b9d2f)
+- [Interim architectural corrections](https://github.com/JuliaParallel/Dagger.jl/commit/91589a15c387c09bdd4e76765bb6eacd4f1553d9)
+- [Main first piece of wiring it all together with stream.jl](https://github.com/JuliaParallel/Dagger.jl/commit/7c02cdb2f257cf9a55e833814fc885b226000248)
 
-## 3. What is left to do?
+## 3. Examples and use cases
+
+*What worked, and what didn't (yet!)*
+
+### 3.1 Streaming sinusoids and FFTs
+
+### 3.2 Streaming EEGs and wavelet transforms
+
+### 3.3 Webstreaming
+
+### 3.4 Live image filtering
+
+### 3.5 Live object detection
+
+## 4. Extras
+
+### 4.1 What is left to do?
 
 - PRs for cancellation support for `Distributed.jl`, `CUDA.jl`, `AMDGPU.jl`, `oneAPI.jl`, `MemPools.jl`.
 - Adding full GPU support to Dagger, and zero-allocation automatic CPU-GPU transfers
 - Benchmark streaming DAG performance and allocations
 - Include full support for message queue based protocols, i.e. NATS, MQTT, ZeroMQ
 
-***
+## 4.2 Attending JuliaCon
 
 ### Acknowledgments
 

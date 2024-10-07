@@ -1,16 +1,23 @@
+ENV["JULIA_DEBUG"] = "Dagger"
+ENV["JULIA_DAGGER_DEBUG"] = "execute,stream,stream_push,stream_pull"
 using Dagger, VideoIO, FileIO, ObjectDetector
 
+global counter = 0
+
 function read_vid(video)
-    if eof(video)
+    global counter
+    if counter > 4 || eof(video)
         println("Finished fetching frames")
-        return Dagger.finish_stream(nothing)
+        return Dagger.finish_stream(result=nothing)
     end
+    counter = counter + 1
     img = VideoIO.read(video)
     println("Video read!")
     return img
 end
 
 function push_aux(stack, img)
+    println("pushing img")
     if img === nothing
         println("Wrapping up...")
         return Dagger.finish_stream(result=stack)
@@ -21,8 +28,22 @@ function push_aux(stack, img)
 end
 
 function prepare_imgaux(img, yolomod)
+    println("prepare img")
+    if img === nothing
+        println("Nothing to prepare")
+        return Dagger.finish_stream(result=nothing)
+    end
     var, out = prepareImage(img, yolomod)
     return out
+end
+
+function drawBoxesAux(img, yolomod, padding, res)
+    println("drawin boxes")
+    if img === nothing
+        println("Almost through...")
+        return Dagger.finish_stream(result=nothing)
+    end
+    return drawBoxes(img, yolomod, padding, res)
 end
 
 # Define input and output video file paths
@@ -40,12 +61,13 @@ Dagger.spawn_streaming() do
     img = Dagger.@spawn read_vid(video)
     res = Dagger.@spawn yolomod(batch, detectThresh=0.5, overlapThresh=0.8)
     padding = Dagger.@spawn prepare_imgaux(img, yolomod)
-    imgBoxes = Dagger.@spawn drawBoxes(img, yolomod, padding, res)
+    imgBoxes = Dagger.@spawn drawBoxesAux(img, yolomod, padding, res)
     stack = Dagger.@spawn push_aux(imgstack, imgBoxes)
 end
 
 imgout = fetch(stack)
 println("Fetched output, initiating file save...")
-VideoIO.save(output_video, imgstack, framerate=30)
+encoder_options = (crf=23, preset="ultrafast")
+VideoIO.save(output_video, stack, framerate=30, encoder_options=encoder_options)
 
 println("Video processing complete!")

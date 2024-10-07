@@ -173,13 +173,130 @@ The streaming communication revamp was also a good opportunity to add support fo
 
 *What worked, and what didn't (yet!)*
 
+We now walk through a list of example use cases for Dagger, seeing what we can replicate through its API.
+
 ### 3.1 Streaming sinusoids and FFTs
+
+Let's kick off with the first example — FFTs of streaming signal data. Given as how Dagger does not yet have batching support, we will simulate this by passing in full batches, i.e. entire stationary signals made by summing K different sinusoids.
+
+$$s_i(n) = \sum_{j=1}^{K} A_i \sin(2\pi f_it)$$
+
+In the above, $A_i$ is a random number from 1 to 10 and $f_i$ is a random frequency chosen from $1–500\ Hz$. $t$ is the time vector and it is constructed with $n$ samples at $\frac{1}{f_s}$ intervals — where $f_s$ is the sampling frequency.
+
+The API simply looks like the below.
+
+```Julia
+Dagger.spawn_streaming() do
+            n = 1:400
+            f_s = 1200
+            freq = fftfreq(n[end], f_s)
+            K = 10
+            l = @layout [a{.3h};b{.7h}]
+
+            s = Dagger.@spawn rand_sinusoids_finite(n[end], K, f_s)
+            ff = Dagger.@spawn fft(s)
+            f = Dagger.@spawn (ff)->map(abs,ff)
+            p1 = Dagger.@spawn plot(n, s, title="Time discrete signal", xlabel="Time", legend="false")
+            p2 = Dagger.@spawn plot(freq, f, title="FFT of signal", xlabel="Frequency", legend="false")
+            p = Dagger.@spawn plot(p1, p2, layout=l)
+            d1 = Dagger.@spawn display(p)
+       end
+```
+
+With some slight changes to the code to output the plots as a .gif file, the resulting graphs are shown below.
+
+<p align="center">
+  <img src="examplescripts/Dagger_fft.gif" />
+</p>
+
+#### Comments
+
+No particular difficulties were encountered in this implementation, Dagger worked exactly as we expected it during building. The DAG in questions is also quite simple as — barring the plotting — it is entirely sequential.
+
+#### `Commit links:`
+- [Main commit](https://github.com/davidizzle/GSoC-Dagger.jl-Blog/commit/d6b60dbb13377096cac3968f57b0df548179cdbc)
 
 ### 3.2 Streaming EEGs and wavelet transforms
 
+Another use case is to process electroencephalogram data feeds on the fly — case in point: *wavelet transforms on EEGs*.
+
+Similarly to the FFT example, we have to both again simulate batching and also simulate EEGs. A dummy function was used that looked like:
+
+$$EEG_i(n) = \delta_i(n) + \theta_i(n) + \alpha_i(n) + \beta_i(n)$$
+
+where $\delta, \theta, \alpha, \beta$ simulate delta, theta, alpha and beta brain waves with phase noise — sinusoidal waves with frequencies in the ranges $1–4\ Hz$, $4–8\ Hz$, $8–12\ Hz$ and $12–20\ Hz$ respectively.
+
+The API implementation was similar to the above, with a few extra steps, but mostly sequential.
+
+```Julia
+Dagger.spawn_streaming() do
+    f_s = 1000  # 1 kHz Sampling rate
+    window_size = 2047  # Samples per window
+    c = wavelet(Morlet(π), β=2)
+    freqs = getMeanFreq(computeWavelets(window_size, c)[1])
+    freqs[1] = 0
+
+    signal = Vector{Float64}()
+    time = Vector{Float64}()
+    l = @layout [a{.3h};b{.7h}]
+
+    # Generate EEG signal for this time window
+    s = Dagger.@spawn generate_eeg_signal(window_size, f_s)
+    p1 = Dagger.@spawn plot(s, legend=false, title="EEG", xlabel= "Time (s)", xticks=false)
+    # Wavelet transform
+    result = Dagger.@spawn cwt(s, c)
+    # Broadcasting square absolute value
+    interim1 = Dagger.@spawn (result) -> map(x -> abs(x)^2, result)
+    # Plotting in logarithmic scale
+    res = Dagger.@spawn (interim1) -> map(x -> log(x), interim1)
+    # Transposing
+    res2 = Dagger.@spawn adjoint(res)
+    p2 = Dagger.@spawn heatmap(tw, freqs, res2, xlabel= "Time (s)", ylabel="requency (Hz)", colorbar=false, c=cgrad(:viridis, scale=:log10))
+    p = Dagger.@spawn plot(p1,p2, layout=l)
+    d = Dagger.@spawn display(p)
+end
+```
+
+#### Comments
+
+As expected, there were no significant hurdles in implementing this DAG through Dagger, and the resulting .gif can be observed below.
+
+<p align="center">
+  <img src="examplescripts/Dagger_eegs.gif" />
+</p>
+
+#### `Commit links:`
+
+- [Main commit](https://github.com/davidizzle/GSoC-Dagger.jl-Blog/commit/d6b60dbb13377096cac3968f57b0df548179cdbc)
+
 ### 3.3 Webstreaming
 
+Another use case for streaming DAGs with Dagger would be to stream image data — e.g. webstreaming — and carry out some sort of processing on it — background blurring, filtering. etc.
+
+We our next example was to use the [VideoIO.jl](https://github.com/JuliaIO/VideoIO.jl) library to capture frames from the computer webcam and filter it through a Dagger DAG.
+However, this was an unsuccessful attempt: the streaming and processing per se likely worked out fine, but it doesn't seem to be immediately clear how to update images using Dagger streaming. The below implementation makes use of the `imshow()` function from [ImageView.jl](https://github.com/JuliaImages/ImageView.jl), but the canvas fails to update. In the interest of time, this specific application was parked.
+
+```Julia
+Dagger.spawn_streaming() do
+    cam = VideoIO.opencamera()
+    fr = VideoIO.read(cam)
+    guidict = ImageView.imshow(fr)
+    sleep(0.1)
+
+    frame = Dagger.@spawn read_frame(cam)
+    p1 = Dagger.@spawn ImageView.imshow(guidict["gui"]["canvas"], frame)
+end
+```
+
+#### `Commit links:`
+
+- [Main commit](https://github.com/davidizzle/GSoC-Dagger.jl-Blog/commit/4c14ec57daf3a4a225b38d6528ca28934e17c754)
+
 ### 3.4 Live image filtering
+
+We didn't want to throw in the towel for a minor technical difficulty and thus we backtracked to filtering a live image feed. Applications use cases are manifold — e.g. video surveillance or any type of live image filtering — and we provide a simple implementation leveraging the [ImageFiltering](https://juliaimages.org/ImageFiltering.jl/stable/) package.
+
+
 
 ### 3.5 Live object detection
 
@@ -187,7 +304,7 @@ The streaming communication revamp was also a good opportunity to add support fo
 
 ### 4.1 What is left to do?
 
-- PRs for cancellation support for `Distributed.jl`, `CUDA.jl`, `AMDGPU.jl`, `oneAPI.jl`, `MemPools.jl`.
+- PRs for cancellation support for `Distributed.jl`, `CUDA.jl`, `AMDGPU.jl`, `oneAPI.jl`, `MemPool.jl`.
 - Adding full GPU support to Dagger, and zero-allocation automatic CPU-GPU transfers
 - Benchmark streaming DAG performance and allocations
 - Include full support for message queue based protocols, i.e. NATS, MQTT, ZeroMQ

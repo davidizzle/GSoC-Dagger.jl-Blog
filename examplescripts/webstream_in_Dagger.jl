@@ -9,20 +9,20 @@ function read_frame(camera)
     return frame;
 end
 
-Dagger.spawn_streaming() do
-    global p1, frame
-    cam = VideoIO.opencamera();
-    fr = VideoIO.read(cam);
-    buf = fr;
-    guidict = ImageView.imshow(buf);
-    # guidictfilt = ImageView.imshow(buf);
-    sleep(1);
+    Dagger.spawn_streaming() do
+        global p1, frame
+        cam = VideoIO.opencamera();
+        fr = VideoIO.read(cam);
+        buf = fr;
+        guidict = ImageView.imshow(buf);
+        # guidictfilt = ImageView.imshow(buf);
+        sleep(1);
 
-    frame = Dagger.@spawn read_frame(cam)
-#    print = Dagger.@spawn println(frame)
-#    p1 = Dagger.@spawn ImageView.imshow(guidict["gui"]["canvas"], frame);
-    p1 = Dagger.@spawn ImageView.imshow(frame);
-#    d = Dagger.@spawn display(p1)
-end
+        frame = Dagger.@spawn read_frame(cam)
+    #    print = Dagger.@spawn println(frame)
+    #    p1 = Dagger.@spawn ImageView.imshow(guidict["gui"]["canvas"], frame);
+        p1 = Dagger.@spawn ImageView.imshow(frame);
+    #    d = Dagger.@spawn display(p1)
+    end
 # fetch(frame)
 readline();

@@ -1,30 +1,37 @@
-ENV["JULIA_DEBUG"] = "Dagger"
-ENV["JULIA_DAGGER_DEBUG"] = "execute,stream,stream_push,stream_pull"
+# ENV["JULIA_DEBUG"] = "Dagger"
+# ENV["JULIA_DAGGER_DEBUG"] = "execute,stream,stream_push,stream_pull"
 using Dagger, VideoIO, FileIO, ObjectDetector
 
 global counter = 0
 
 function read_vid(video)
-    global counter
-    if counter > 4 || eof(video)
+    if eof(video)
         println("Finished fetching frames")
         return Dagger.finish_stream(result=nothing)
     end
-    counter = counter + 1
     img = VideoIO.read(video)
     println("Video read!")
     return img
 end
 
-function push_aux(stack, img)
-    println("pushing img")
-    if img === nothing
+function push_aux_TLS(img)
+    stack = []
+    global counter
+    if counter > 250 || img === nothing
         println("Wrapping up...")
+        stack = task_local_storage("stack")
         return Dagger.finish_stream(result=stack)
     end
-    push!(stack, img)
-    println(length(stack))
-    return stack
+    if !haskey(task_local_storage(), "stack")
+        task_local_storage("stack", [img])
+    else
+       stack = task_local_storage("stack")
+       push!(stack, img)
+       println(length(stack))
+       task_local_storage("stack", stack)
+       counter = counter + 1
+    end
+    return stack;
 end
 
 function prepare_imgaux(img, yolomod)
@@ -47,8 +54,8 @@ function drawBoxesAux(img, yolomod, padding, res)
 end
 
 # Define input and output video file paths
-video_source = "cars.mp4"   # Replace with your input video file path
-output_video = "yolo_dagger_cars.mp4"  # Path for the output video filevideo_source = "cars.mp4"  # Replace with your video file path or use "0" for webcam
+video_source = "cats2.mp4"   # Replace with your input video file path
+output_video = "yolo_dagger_cats2.mp4"  # Path for the output video filevideo_source = "cars.mp4"  # Replace with your video file path or use "0" for webcam
 
 Dagger.spawn_streaming() do
     global stack
@@ -62,7 +69,7 @@ Dagger.spawn_streaming() do
     res = Dagger.@spawn yolomod(batch, detectThresh=0.5, overlapThresh=0.8)
     padding = Dagger.@spawn prepare_imgaux(img, yolomod)
     imgBoxes = Dagger.@spawn drawBoxesAux(img, yolomod, padding, res)
-    stack = Dagger.@spawn push_aux(imgstack, imgBoxes)
+    stack = Dagger.@spawn push_aux_TLS(imgBoxes)
 end
 
 imgout = fetch(stack)

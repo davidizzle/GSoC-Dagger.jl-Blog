@@ -110,7 +110,7 @@ The Dagger API for specifying a networking protocol would be on a "per-upstream-
 - [First draft of pull/push network protocols...](https://github.com/davidizzle/Dagger.jl/commit/05aa462d7ee732a8d4a15eb5656bcdecfcefabf0)
 - [...with corrections](https://github.com/davidizzle/Dagger.jl/commit/1babb00ee710e1754a14023b0258e9a75e9e64b1)
 
-### 2.3 Memory-Mapped Ring Buffer Rollout
+### 2.3 Memory-Mapped Ring Buffers
 
 Through the `Mmap.jl` library, which helps with memory-mapping of files, a new type of buffer was initially implemented in the following couple of weeks — an `mmapRingBuffer`, i.e. a ring buffer that maps data on disk, allowing direct access to the data without loading it into memory, thereby reducing overhead. The rationale behind a memory-mapped ring buffer is to eliminate the overhead from allocations of extra space when copying buffer data, but rather having a downstream task in a DAG access the same memory used by the upstream’s ring buffer.
 
@@ -120,7 +120,9 @@ By way of background, a "ring" — or circular — buffer is a data structure th
   <img src="ringbuffer.gif" />
 </p>
 
-This was implemented locally, but ended up being tabled — hence no commits were ever made with this specific change. It remains in the to-dos for potential future use.
+This was implemented locally, but ended up being tabled. This idea went through many redesigns and the original design "bitrotted". There does not seem to be a clear way to determine when to automatically use this.
+On top of this, in the new redesign with `RemoteChannel` (see more later), tasks are not directly connected anymore — instead using normal ring buffers to connect them to their inputs and outputs.
+A memory-mapped ring buffer's role is now less clear — hence no commits were ever made with this specific change. It remains in the to-dos for potential future use or clarification.
 
 ### 2.4 Graceful cancellation and signal interrupts
 
@@ -154,7 +156,7 @@ Similar work should be carried out for each of the aforementioned libraries — 
 - [Including forceful cancellation in Base.Threads](https://github.com/davidizzle/julia/commit/32e6883420a45ea64b67cd7c7f22e704a33c4548)
 - [Including graceful cancellation through expression parsing in Base.Threads](https://github.com/davidizzle/julia/commit/8e4b148549201a41bf84cf1765a38818fb73cf69)
 
-### 2.5 Piping and wiring networking protocols
+### 2.5 Wiring up the networking protocols
 
 As GSoC comes to a wrap, it is time to merge what is in place and works well.
 
@@ -317,12 +319,11 @@ Dagger.spawn_streaming() do
     imgarray = Dagger.@spawn push_aux_TLS(frame)
 end
 ```
-There is naturally no way to show, in this blog, streaming video output. It was hence necessary to take a finite video and accumulate the frames in an array at the end of the streaming DAG, to be converted into a video.
-We performed this for a number of videos, and the results are shown below.
+
+There is naturally no way to show, in this blog, streaming video output. It was hence necessary to take a finite video and accumulate the frames in an array at the end of the streaming DAG, which can then be converted into an output video.
+We performed this for a number of files  — either greying out, blurring, or applying odd filtering — the results of which are shown below.
 
 #### Video 1: Woman walking dogs
-
-The video was greyed out.
 
 [Original video](https://www.youtube.com/shorts/ERhf95tULUo)
 [Greyed out video](https://www.youtube.com/shorts/7SZULHj8r6c)
@@ -359,9 +360,9 @@ The video was greyed out.
 Perhaps a more specific use case of image filtering is image processing and live object detection.
 
 This initially proved to be a challenge leveraging [YOLO](https://pjreddie.com/darknet/yolo/), wrapped in the Julia package [ObjectDetector.jl](https://github.com/r3tex/ObjectDetector.jl), because of the DAG interdependency which is not immediate to implement for streaming tasks.
-We used the YOLOv3-tiny model and for simplicity, and for the sake of real-time streaming and low resource utilization, we pick a batch size of 1 — though this is definitely a tuneable parameter that can improve accuracy.
+We used the YOLOv3-tiny model and for simplicity, and for the sake of real-time streaming and low resource utilization, we picked a batch size of 1 — though this is definitely a tuneable parameter that can improve accuracy.
 
-The final task accumulates inference output images and writes to a video file, which is linked below.
+The final `stack` task accumulates inference output images and writes to a video file, which has been linked below.
 
 ```Julia
 Dagger.spawn_streaming() do
@@ -381,12 +382,16 @@ Dagger.spawn_streaming() do
 end
 ```
 
-The main trouble I ran into when deploying this inference model with Dagger streaming was the one-step lag there when passing the `batch` variable to the YOLOv3-tiny model, which presumably feeds from previous images.
-This is shown in the diagram below — while the DAG itself does not include a lot of nodes and edges, it does include the one-step lag represented by the $z^{-1}$ arrow.
+The main trouble I ran into when deploying this inference model with Dagger streaming was the one-step lag needed when passing the `batch` variable to the YOLOv3-tiny model, which presumably feeds from previous images.
+I have shown this in the diagram below — while the DAG itself does not include a lot of nodes and edges, it does include the one-step lag represented by the $z^{-1}$ arrow.
+
+<p align="center">
+  <img src="yolodag.png", width="450"/>
+</p>
 
 Given that DAG loops or complicate interdependencies might not still be comprehensively supported, I worked around this for showcasing purposes in a bit of a hacky way.
 
-As shown below, the yolomodAux task stores in its internal `task_local_storage()` the previous value, popping the present one (if there is one) at each iteration. This simulates a data feed lag of one-step — which can be generalizable to an $n$-step lag by implementing an $n$-element queue in the TLS of the task, pushing and popping at each iteration.
+As shown below, the yolomodAux task stores in its internal `task_local_storage()` the *new* value received by the `prepareImg` task, popping the *previously inserted* one (if any) at each iteration. This simulates a data feed lag of one-step — which can be generalizable to an $n$-step lag by implementing an $n$-element queue in the TLS of the task, pushing and popping at each iteration.
 ```Julia
 function yolomodAux(batch, aux, yolomod)
     
@@ -399,10 +404,6 @@ function yolomodAux(batch, aux, yolomod)
     return output
 end
 ```
-
-<p align="center">
-  <img src="yolodag.png", width="450"/>
-</p>
 
 [Original video](https://youtu.be/OaGZcJo-oPY)
 [YOLO Object Detection](https://youtu.be/mZ0uAs-7OiA)
@@ -427,6 +428,7 @@ We may include options for this in the future Dagger API for ease of use, but fo
 - PRs for cancellation support for `Distributed.jl`, `CUDA.jl`, `AMDGPU.jl`, `oneAPI.jl`, `MemPool.jl`.
 - Adding full GPU support to Dagger, and zero-allocation automatic CPU-GPU transfers
 - Benchmark streaming DAG performance and allocations
+- Increase testset for networking protocols
 - Include full support for message queue based protocols, i.e. NATS, MQTT, ZeroMQ
 
 ## 4.2 Attending JuliaCon

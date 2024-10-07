@@ -312,7 +312,9 @@ We didn't want to throw in the towel for a minor technical difficulty and thus w
 ## 4.2 Attending JuliaCon
 
 The JuliaCon 2024 was hosted in Eindhoven, NL during the week of July 9th–13th.
-I managed to fly in on Thursday, July 12th and Saturday, July 13th just in time to see Julian's brief presentation on Dagger (which followed the [Workshop](https://www.youtube.com/watch?v=ENq05cxw1eY) presented at TU/e on Tuesday).
+I managed to fly in for the last two days (Friday, July 12th and Saturday, July 13th) just in time to see Julian's brief presentation on Dagger (which followed the [Workshop](https://www.youtube.com/watch?v=ENq05cxw1eY) presented at TU/e on Tuesday).
+
+Many attendees, especially researchers in HPC, expressed their interest in additional features 
 
 ![image](juliacon.jpg "JuliaCon Eindhoven 2024")
 *JuliaCon Eindhoven 2024*

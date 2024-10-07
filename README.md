@@ -311,10 +311,13 @@ We didn't want to throw in the towel for a minor technical difficulty and thus w
 
 ## 4.2 Attending JuliaCon
 
+The JuliaCon 2024 was hosted in Eindhoven, NL during the week of July 9th–13th.
+I managed to fly in on Thursday, July 12th and Saturday, July 13th just in time to see Julian's brief presentation on Dagger (which followed the [Workshop](https://www.youtube.com/watch?v=ENq05cxw1eY) presented at TU/e on Tuesday).
+
+![image](juliacon.jpg "JuliaCon Eindhoven 2024")
+*JuliaCon Eindhoven 2024*
+
 ### Acknowledgments
 
 My special, heartfelt thanks go to [J. Samaroo](https://github.com/jpsamaroo) and [J. Wrigley](https://github.com/JamesWrigley) for their awesome mentorship through the Google Summer of Code program, which has truly taught me more than I could imagine — about programming, about Julia, about HPC, but more especially about teamwork and the importance of helping each other.
 To many more lines of code of contribution and projects built together!
-
-![image](juliacon.jpg "JuliaCon Eindhoven 2024")
-*JuliaCon Eindhoven 2024*

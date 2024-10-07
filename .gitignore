@@ -3,14 +3,3 @@
 *.mp4
 *.gif
 
-# Do not ignore these files
-#!.gitignore
-# !output_Dagger_dogs.mp4
-#!output_Dagger_filtered_cats2.mp4
-#!output_Dagger_filtered_dogs2.mp4
-#!output_Dagger_filtered_dogs1.mp4
-#!output_Dagger_gray_cats2.mp4
-
-# even if they are in subdirectories
-#!*/
-

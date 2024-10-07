@@ -9,7 +9,7 @@
 
 ![image](logo.jpg)
 
-It is typically a cumbersome exercise, for programmers, to quickly and efficiently deploy multithreaded, distributed, or GPU computation.
+It is typically a cumbersome exercise, for programmers, to quickly and efficiently deploy multithreaded, distributed, or GPU computations.
 
 Doing all three at once is then certainly no easy feat — but that is where [Dagger.jl](https://github.com/JuliaParallel/Dagger.jl) swoops in!
 
@@ -21,7 +21,7 @@ Dagger is a Julia module that brings all three together and makes parallelism ea
 - Automating data transfer and worker migration, while hiding latency
 - Automating GPU utilization and data conversion
 
-As a result, though the user might even be agnostic to concurrency and parallelism, leveraging Dagger's API she is able to tinker with high performance computing.
+As a result, though the user might not be very familiar with concurrency and parallel programming, by leveraging Dagger's APIs, the user is able to be productive while doing high performance computing.
 
 See Dagger's parallelism capabilities through the 3 lines of code below:
 
@@ -34,7 +34,9 @@ end
   <img src="parall.png" />
 </p>
 
-Ta-da! Obviously, while showcasing how parallelizable a bunch of `sleep()` calls is silly, it is just to get the point across. In combination with `DArrays`, which are Dagger Distributed Arrays, can improve on default performance since standard operations do not use multi-threading at all and parallelization can be more powerful.
+<small>*Image credit: [J.Samaroo Dagger Workshop](https://github.com/jpsamaroo/DaggerWorkshop2024/blob/main/DaggerWorkshop2024.ipynb)*</small>
+
+Ta-da! Obviously, while showcasing how parallelizable a bunch of `sleep()` calls is silly, it is just to get the point across that Dagger can make parallelism easy
 
 If you want to learn more about how Dagger works or want to deep-dive into the specifics of how Dagger makes all of this happen behind the scenes, check out the [Dagger Workshop](https://github.com/jpsamaroo/DaggerWorkshop2024) from the [Productive Parallel Programming](https://www.youtube.com/watch?v=ENq05cxw1eY&t=1388s) conference at JuliaCon 2024!
 
@@ -42,17 +44,17 @@ If you want to learn more about how Dagger works or want to deep-dive into the s
 
 #### *Enter: DAGs*
 
-Dagger has recently been incorporating streaming functionality in its `jps/stream2` branch, which allows users to implement task Directed Acyclic Graphs (DAGs) through a streaming queue of tasks (see examples below). Again, these *streaming* tasks can then seamlessly be deployed in a multi-threaded, multi-process fashion which can also leverage a heterogeneous set of computing resources.
+Dagger has recently been incorporating streaming functionality in its `jps/stream2` branch, which allows users to implement task Directed Acyclic Graphs (DAGs) as a streaming graph of connected tasks (see examples below). Again, these *streaming* tasks can then seamlessly be deployed in a multi-threaded, multi-process fashion which can also leverage a heterogeneous set of computing resources.
 
 ![image](dags.png)
 
 At the beginning of the GSoC contribution program, we set some ambitious goals:
 
-1. **Tooling for Task Execution Validation**: we aimed to develop tools to ensure tasks execute with minimal memory allocation, which enhances performance by avoiding garbage collector pauses and overhead from allocation itself.
-2. **Data Transfer Mechanisms**: Implement an optimized mmap-backed ring buffer for inter-process communication and implement support for various protocols (TCP, UDP, NATS, MQTT) for cross-network transfers.
-3. **Heterogeneous Streaming Infrastructure**: Create infrastructure to facilitate executing streaming tasks on GPUs/DPUs and streaming data directly to/from them and CPUs.
-4. **Performance Benchmarking**: Benchmark the streaming DAG performance using a standard benchmark problem to assess efficiency improvements.
-5. **Robustness Testing**: Implement a set of benchmarks of streaming DAG performance, using real-world radio/RADAR analyses and source data to assess efficiency and reliability.
+1. **Tooling for Task Execution Validation**: we aimed to develop tools to ensure tasks execute with minimal memory allocation, which would enhance performance by avoiding garbage collector pauses and overhead from allocation itself.
+2. **Data Transfer Mechanisms**: we set out to implement an optimized mmap-backed ring buffer for inter-process communication and also implement support for various protocols (TCP, UDP, NATS, MQTT) for cross-network transfers.
+3. **Heterogeneous Streaming Infrastructure**: we proposed to create infrastructure to facilitate executing streaming tasks on GPUs/DPUs and streaming data directly to/from them and CPUs.
+4. **Performance Benchmarking**: we wanted to benchmark the streaming DAG performance using a standard benchmark problem to assess efficiency improvements.
+5. **Robustness Testing**: lastly, we ideally would have implemented a set of benchmarks of streaming DAG performance, using real-world radio/RADAR analyses and source data to assess efficiency and reliability.
 
 ****
 
@@ -120,6 +122,8 @@ By way of background, a "ring" — or circular — buffer is a data structure th
   <img src="ringbuffer.gif" />
 </p>
 
+<small>*This gif was provided by [Wikimedia Commons](https://commons.wikimedia.org/wiki/File:Circular_Buffer_Animation.gif)*</small>
+
 This was implemented locally, but ended up being tabled. This idea went through many redesigns and the original design "bitrotted". There does not seem to be a clear way to determine when to automatically use this.
 On top of this, in the new redesign with `RemoteChannel` (see more later), tasks are not directly connected anymore — instead using normal ring buffers to connect them to their inputs and outputs.
 A memory-mapped ring buffer's role is now less clear — hence no commits were ever made with this specific change. It remains in the to-dos for potential future use or clarification.
@@ -144,6 +148,9 @@ As a result, this required concocting a new way to cancel multi-threaded jobs �
 <p align="center">
   <img src="ast.png" width="450" />
 </p>
+<small>
+
+*Image credit: [Ruslan Spivak's Blog](https://ruslanspivak.com/lsbasi-part7/)*</small>
 
 This code was ultimately running successfully and added to the final commit #5 — it has the advantage of implementing *truly graceful* cancellation as any task can simply quit execution and return prematurely, but the disadvantage of potentially adding overhead.
 
@@ -173,9 +180,11 @@ The streaming communication revamp was also a good opportunity to add support fo
 - [Interim architectural corrections](https://github.com/JuliaParallel/Dagger.jl/commit/91589a15c387c09bdd4e76765bb6eacd4f1553d9)
 - [Main first piece of wiring it all together with stream.jl](https://github.com/JuliaParallel/Dagger.jl/commit/7c02cdb2f257cf9a55e833814fc885b226000248)
 
+****
+
 ## 3. Examples and use cases
 
-*What worked, and what didn't (yet!)*
+##### *What worked, and what didn't (yet!)*
 
 We now walk through a list of example use cases for Dagger, seeing what we can replicate through its API.
 
@@ -207,7 +216,7 @@ Dagger.spawn_streaming() do
        end
 ```
 
-With some slight changes to the code to output the plots as a .gif file, the resulting graphs are shown below.
+With some slight changes to the code, we can package the plots as a .gif file. The resulting graphs are shown below.
 
 <p align="center">
   <img src="examplescripts/Dagger_fft.gif" />
@@ -226,7 +235,7 @@ Another use case is to process electroencephalogram data feeds on the fly — ca
 
 Similarly to the FFT example, we have to both again simulate batching and also simulate EEGs. A dummy function was used that looked like:
 
-$$EEG_i(n) = \delta_i(n) + \theta_i(n) + \alpha_i(n) + \beta_i(n)$$
+$$EEG_i(n) = \delta_i(n) + \theta_i(n) + \alpha_i(n) + \beta_i(n)  + AWGN(0, 0.01)$$
 
 where $\delta, \theta, \alpha, \beta$ simulate delta, theta, alpha and beta brain waves with phase noise — sinusoidal waves with frequencies in the ranges $1–4\ Hz$, $4–8\ Hz$, $8–12\ Hz$ and $12–20\ Hz$ respectively.
 
@@ -332,6 +341,8 @@ We performed this for a number of files  — either greying out, blurring, or ap
   <img src="dogs1.png" />
 </p>
 
+<small>*Video provided by [Pexels](https://www.pexels.com/search/videos/)*</small>
+
 #### Video 2: Cats
 
 [Original video](https://www.youtube.com/shorts/GFIqhz9YtGc)
@@ -350,6 +361,8 @@ We performed this for a number of files  — either greying out, blurring, or ap
 <p align="center">
   <img src="dogs2.png" />
 </p>
+
+<small>*Video provided by [Pexels](https://www.pexels.com/search/videos/)*</small>
 
 #### `Commit links:`
 
@@ -392,6 +405,7 @@ I have shown this in the diagram below — while the DAG itself does not include
 Given that DAG loops or complicate interdependencies might not still be comprehensively supported, I worked around this for showcasing purposes in a bit of a hacky way.
 
 As shown below, the yolomodAux task stores in its internal `task_local_storage()` the *new* value received by the `prepareImg` task, popping the *previously inserted* one (if any) at each iteration. This simulates a data feed lag of one-step — which can be generalizable to an $n$-step lag by implementing an $n$-element queue in the TLS of the task, pushing and popping at each iteration.
+
 ```Julia
 function yolomodAux(batch, aux, yolomod)
     
@@ -412,6 +426,8 @@ end
   <img src="kittens.png" />
 </p>
 
+<small>*Video provided by [Pexels](https://www.pexels.com/search/videos/)*</small>
+
 #### Comments
 
 This example highlighted how we eventually might need to think about all possible edge cases when constructing DAGs with feedback systems, and potentially including safety checks for potential user misconstructed DAGs.
@@ -420,6 +436,8 @@ We may include options for this in the future Dagger API for ease of use, but fo
 #### `Commit links:`
 
 - [Main commit](https://github.com/davidizzle/GSoC-Dagger.jl-Blog/commit/183282c473781aa726a71e85d8c80b41d52779a1)
+
+****
 
 ## 4. Extras
 

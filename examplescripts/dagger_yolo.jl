@@ -54,8 +54,8 @@ function drawBoxesAux(img, yolomod, padding, res)
 end
 
 # Define input and output video file paths
-video_source = "cats2.mp4"   # Replace with your input video file path
-output_video = "yolo_dagger_cats2.mp4"  # Path for the output video filevideo_source = "cars.mp4"  # Replace with your video file path or use "0" for webcam
+video_source = "cats1.mp4"   # Replace with your input video file path
+output_video = "yolo_dagger_cats1.mp4"  # Path for the output video filevideo_source = "cars.mp4"  # Replace with your video file path or use "0" for webcam
 
 Dagger.spawn_streaming() do
     global stack
@@ -75,6 +75,6 @@ end
 imgout = fetch(stack)
 println("Fetched output, initiating file save...")
 encoder_options = (crf=23, preset="ultrafast")
-VideoIO.save(output_video, stack, framerate=30, encoder_options=encoder_options)
+VideoIO.save(output_video, imgout, framerate=30, encoder_options=encoder_options)
 
 println("Video processing complete!")

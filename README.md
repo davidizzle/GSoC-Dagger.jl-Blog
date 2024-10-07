@@ -297,6 +297,26 @@ end
 We didn't want to throw in the towel for a minor technical difficulty and thus we backtracked to filtering a live image feed. Applications use cases are manifold — e.g. video surveillance or any type of live image filtering — and we provide a simple implementation leveraging the [ImageFiltering](https://juliaimages.org/ImageFiltering.jl/stable/) package.
 
 
+<> Filtered tigro
+https://github.com/user-attachments/assets/c1924d51-ebe3-438d-8560-aa065e048be2
+
+
+<> Filtered blurry dogs
+https://github.com/user-attachments/assets/995b4463-2f8a-4cc3-b81b-2ad679d640f2
+
+
+<> Laplacian dogs
+https://github.com/user-attachments/assets/61d6bf21-3aeb-4d51-be70-76218461ecac
+
+
+<> Gray tigro
+https://github.com/user-attachments/assets/670949e2-ad46-4097-9821-d5aeca6061d9
+
+
+<> gray dogs
+https://github.com/user-attachments/assets/522ec722-ea7f-4a6c-98d5-8bd471f104d4
+
+
 
 ### 3.5 Live object detection
 

@@ -239,7 +239,9 @@ $$EEG_i(n) = \delta_i(n) + \theta_i(n) + \alpha_i(n) + \beta_i(n)  + AWGN(0, 0.0
 
 where $\delta, \theta, \alpha, \beta$ simulate delta, theta, alpha and beta brain waves with phase noise — sinusoidal waves with frequencies in the ranges $1–4\ Hz$, $4–8\ Hz$, $8–12\ Hz$ and $12–20\ Hz$ respectively.
 
-The API implementation was similar to the above, with a few extra steps, but mostly sequential.
+This is naturally a simplistic representation of EEGs because each generated batch is stationary — hence making a Fourier transform a fully sufficient analysis tool. However, we carry out the trivial example with the dummy function as a mere test of the parts.
+
+The API implementation was similar to example 3.1 — mostly sequential — but with a few extra steps.
 
 ```Julia
 Dagger.spawn_streaming() do
@@ -396,15 +398,15 @@ end
 ```
 
 The main trouble I ran into when deploying this inference model with Dagger streaming was the one-step lag needed when passing the `batch` variable to the YOLOv3-tiny model, which presumably feeds on previous images.
-I have shown this in the diagram below — while the DAG itself does not include a lot of nodes and edges, it does include the one-step lag represented by the $z^{-1}$ arrow.
+I have shown this in the diagram below: while the DAG itself does counts few nodes, one of the edges has a one-step lag represented by the $z^{-1}$ arrow.
 
 <p align="center">
   <img src="images/yolodag.png", width="450"/>
 </p>
 
-Given that DAG loops or complicate interdependencies might not still be comprehensively supported, I worked around this for showcasing purposes in a bit of a hacky way.
+Given that DAG loops or specific temporal dependencies might not still be comprehensively supported, I worked around this for showcasing purposes in a bit of a hacky way.
 
-As shown below, the yolomodAux task stores in its internal `task_local_storage()` the *new* value received by the `prepareImg` task, popping the *previously inserted* one (if any) at each iteration. This simulates a data feed lag of one-step — which can be generalizable to an $n$-step lag by implementing an $n$-element queue in the TLS of the task, pushing and popping at each iteration.
+As shown below, the task running `yolomodAux()` stores in its internal `task_local_storage()` the *new* value received by the `prepareImg` task, popping the *previously inserted* one (if any) at each iteration. This simulates a data feed lag of one-step — which can be generalizable to an $n$-step lag by implementing an $n$-element queue in the TLS of the task, pushing and popping at each iteration.
 
 ```Julia
 function yolomodAux(batch, aux, yolomod)

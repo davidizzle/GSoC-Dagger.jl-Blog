@@ -124,10 +124,9 @@ end
 
 Dagger.spawn_streaming() do
             global tt
-             # freq = fftfreq(x[end], f_s)
-            # t = collect(0:1/f_s:(x[end]-1)/f_s)
-            # l = @layout [a{.2h};b{.2h};c{.5w} d{.5w}]
-            l = @layout [a{.2h};b{.2h};c{.6h}]
+            
+            l = @layout [a{.2h}; b{.2h}; c{.5w} d{.5w}]
+            # l = @layout [a{.2h};b{.2h};c{.6h}]
             # l = @layout [a{.15h};b{.15h};c{.25h}; d{.35h}]
             samples = 1000
             carrier = 3e9
@@ -161,9 +160,9 @@ Dagger.spawn_streaming() do
             mtd_plot = Dagger.@spawn (mtd) -> map((x) -> 10*log10(abs(x)^2), mtd)
             # pr = Dagger.@spawn (mtd_plot) -> println(size(mtd_plot))
             p3 = Dagger.@spawn heatmap(kmt, v, mtd_plot, clims=(-10,15), xlabel="Distance [km]", ylabel="Velocities [m/s]", title="Moving Target Detection")
-            p4 = Dagger.@spawn surface(kmt, v, mtd_plot, title="Moving Target Detection", xlabel="Distance [km]", ylabel="Velocities [m/s]", zlabel = "Power [dB]", camera=(45,30))
+            p4 = Dagger.@spawn surface(kmt, v, mtd_plot, title="Moving Target Detection", xlabel="Distance [km]", ylabel="Velocities [m/s]", zlabel = "SNR [dB]", camera=(45,30))
             # p = Dagger.@spawn plot(p1, p2, p3, layout=l, size = (1200, 800))
-            p = Dagger.@spawn plot(p4, size = (1920, 1080), left_margin=15Plots.mm, top_margin=10Plots.mm, bottom_margin=15Plots.mm)
+            p = Dagger.@spawn plot(p1, p2, p3, p4, layout=l, size = (1920, 1080), left_margin=15Plots.mm, top_margin=10Plots.mm, bottom_margin=15Plots.mm)
             # d1 = Dagger.@spawn display(p)
             tt = Dagger.@spawn push_aux_TLS(p)
             # ts = Dagger.@spawn push_aux_TLS(p4)

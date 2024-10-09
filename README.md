@@ -229,7 +229,7 @@ No particular difficulties were encountered in this implementation, Dagger worke
 #### `Commit links:`
 - [Main commit](https://github.com/davidizzle/GSoC-Dagger.jl-Blog/commit/d6b60dbb13377096cac3968f57b0df548179cdbc)
 
-### 3.2 Streaming EEGs and wavelet transforms
+### 3.2 Streaming EEGs and Wavelet Transforms
 
 Another use case is to process electroencephalogram data feeds on the fly — case in point: *wavelet transforms on EEGs*.
 
@@ -313,7 +313,7 @@ end
 
 - [Main commit](https://github.com/davidizzle/GSoC-Dagger.jl-Blog/commit/4c14ec57daf3a4a225b38d6528ca28934e17c754)
 
-### 3.4 Live image filtering
+### 3.4 Live Image Filtering
 
 We didn't want to throw in the towel for a minor technical difficulty and thus we backtracked to filtering a live image feed. Applications are manifold — e.g. video surveillance or any type of live image filtering — and we provide a simple implementation leveraging the [ImageFiltering](https://juliaimages.org/ImageFiltering.jl/stable/) and [ColorTypes](https://github.com/JuliaGraphics/ColorTypes.jl) packages.
 
@@ -370,7 +370,7 @@ We performed this for a number of files  — either greying out, blurring, or ap
 
 - [Main commit](https://github.com/davidizzle/GSoC-Dagger.jl-Blog/commit/4c14ec57daf3a4a225b38d6528ca28934e17c754)
 
-### 3.5 Live object detection
+### 3.5 Live Object Detection
 
 Perhaps a more specific use case of image filtering is image processing for live object detection.
 
@@ -438,6 +438,79 @@ We may include options for this in the future Dagger API for ease of use, but fo
 #### `Commit links:`
 
 - [Main commit](https://github.com/davidizzle/GSoC-Dagger.jl-Blog/commit/183282c473781aa726a71e85d8c80b41d52779a1)
+
+### 3.6 Radar Processing Chain
+
+We have pointed out Dagger streaming DAG has an interesting use case for continuous signal processing, i.e. where there is an endless data feed and we would like to carry out heavy computations in real time and, in performance-critical applications, as efficiently as possible.
+One helpful example of this are RADARs — a lot closer to what we had set our sights on in the initial project proposal with the [MIT Haystack Observatory](https://www.haystack.mit.edu/).
+In this section, we walk through what might resemble a real application for Dagger Streaming in the context of RADAR-specific signal processing.
+We will only include some of the fundamental unsophisticated upstream blocks, specifically digital [Pulse Compression](https://en.wikipedia.org/wiki/Pulse_compression) (PC) and [Moving Target Detection](https://www.skyradar.com/blog/understanding-mti-mtd-and-how-to-apply-them-with-freescopes) (MTD), which respectively have the functions of compressing the pulse response to improve target resolution and to apply coherent integration to batches of pulse responses by means of a [Doppler filter](https://www.radartutorial.eu/11.coherent/Doppler-Filter.en.html) — the final output is then a 2D matrix along the dimensions of time and frequency.
+
+The code interacting with the Dagger Streaming API is shown below.
+```Julia
+Dagger.spawn_streaming() do
+
+            l = @layout [a{.2h}; b{.2h}; c{.5w} d{.5w}]
+            samples = 1000
+            carrier = 3e9
+            BW = 2e6
+            f_s = 2.75e6
+            
+            light_speed = 299792458
+            PRF = f_s / samples
+            vlim = PRF / 2 / carrier * light_speed / 2
+            v = range(-vlim, vlim, length = resolution)
+            window_l = convert(Int, floor(samples/10))
+            window = range(0, window_l / f_s, length=window_l)
+            chirp = 3 * exp.(1im * pi * BW / window[end] * ( window .- window[end] / 2).^2)
+            filterm = conj(chirp) ./ norm(chirp, 2)
+            padded_filt = vcat(filterm, zeros(samples - window_l))
+            padded_filt = padded_filt[end:-1:1]
+
+            t = range(0, samples / f_s, length=samples)
+            kmt = light_speed * t / 2 / 1e3
+
+            s = Dagger.@spawn generate_target_response(samples, carrier, chirp, window)
+            ff = Dagger.@spawn fft(s)
+            filt_fft = Dagger.@spawn fft(padded_filt)
+            dpc_f = Dagger.@spawn ff .* filt_fft
+            dpc = Dagger.@spawn ifft(dpc_f)
+            mtd = Dagger.@spawn moving_target_detector(dpc)
+            s_plot = Dagger.@spawn (s) -> map((x) -> 10*log10(abs(x)^2), s)
+            p1 = Dagger.@spawn plot(kmt, s_plot, title="Signal", xlabel="Distance [km]", ylabel="SNR [dB]", legend=false, ylim=(-40, 30))
+            dpc_plot = Dagger.@spawn (dpc) -> map((x) -> 10*log10(abs(x)^2), dpc)
+            p2 = Dagger.@spawn plot(kmt, dpc_plot, title="Pulse Compression", xlabel="Distance [km]", ylabel="SNR [dB]", legend=false, ylim=(-40, 30))
+            mtd_plot = Dagger.@spawn (mtd) -> map((x) -> 10*log10(abs(x)^2), mtd)
+            p3 = Dagger.@spawn heatmap(kmt, v, mtd_plot, clims=(-10,15), xlabel="Distance [km]", ylabel="Velocities [m/s]", title="Moving Target Detection")
+            p4 = Dagger.@spawn surface(kmt, v, mtd_plot, title="Moving Target Detection", xlabel="Distance [km]", ylabel="Velocities [m/s]", zlabel = "SNR [dB]", 
+            p = Dagger.@spawn plot(p1, p2, p3, p4, layout=l, size = (1920, 1080), left_margin=15Plots.mm, top_margin=10Plots.mm, bottom_margin=15Plots.mm)
+            d = Dagger.@spawn display(p)
+
+       end
+```
+
+The code above makes use of auxiliary functions which can be found in the `radar_processing_Dagger.jl` file in this repo.
+This use case is interesting because whilst pulse compression is done on a per-pulse basis through a signal convolution with a *matched filter*, MTD is an *integration* algorithm that operates on a **CPI** (Coherent Processing Interval) — i.e., a batch of pulses.
+It is then possible to buffer DAG data inside any local task storage, and then apply some logic on a batch of input.
+
+In this specific example, given that we did not ultimately have access to real RADAR data, it was necessary to emulate pulse responses. In practice, a single-target pulse response was chosen, and the signals were fabricated by generating additive white Gaussian noise and adding a pulse with an applied [linear chirp](https://en.wikipedia.org/wiki/Chirp) at a randomly picked target distance. The target in question was also selected to have random radial velocity within $\pm60\ \frac{m}{s}$.
+
+Below, we emulate the results for a RADAR with a ~3.5 ms Pulse Repetition Interval (PRI), resolving as far as 550 km away.
+
+*NB: In the charts below, time units are converted to space units and Doppler frequencies are converted to radial velocities.*
+
+<p align="center">
+  <img src="examplescripts/Dagger_radar_processing_extra2.gif" />
+</p>
+
+We ran a similar experiment for a RADAR with a 10x shorter hypothesized PRI of ~350 µs, and a pulse time duration of ~30 µs. 
+
+<p align="center">
+  <img src="examplescripts/Dagger_radar_processing_hor.gif" />
+</p>
+
+This is closer to how pulse RADARs truly operate, as they are generally ambiguous and employ other techniques to resolve echoes from targets further than this distance.
+It is advantageous for RADARs to decrease their PRI (without excessively compromising range), as it frees up more execution time for — in our case — 10x as many operations.
 
 ****
 

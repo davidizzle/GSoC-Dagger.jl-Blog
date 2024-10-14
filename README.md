@@ -1,5 +1,6 @@
 # GSoC Blog
 
+![image](images/logogsoc.png)
 
 ## 1. Introduction
 
@@ -224,7 +225,7 @@ With some slight changes to the code, we can package the plots as a .gif file. T
 
 #### Comments
 
-No particular difficulties were encountered in this implementation, Dagger worked exactly as we expected it to during building. The DAG in questions is also quite simple as — barring the plotting — it is entirely sequential.
+No particular difficulties were encountered in this implementation, Dagger worked exactly as we expected it to during building. The DAG in question+ is also quite simple as — barring the plotting — it is entirely sequential.
 
 #### `Commit links:`
 - [Main commit](https://github.com/davidizzle/GSoC-Dagger.jl-Blog/commit/d6b60dbb13377096cac3968f57b0df548179cdbc)
